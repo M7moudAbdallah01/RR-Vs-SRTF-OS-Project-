@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Round Robin vs SRTF | OS Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --rr: #00c2ff;
+    --srtf: #ff6b35;
+    --accent: #7c3aed;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #22c55e;
+    --error: #ef4444;
+    --warn: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0d1b2e 0%, #111827 100%);
+    border-bottom: 2px solid var(--border);
+    padding: 24px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top:0; z-index:100;
+    backdrop-filter: blur(10px);
+  }
+  header h1 { font-size: 1.4rem; font-weight:800; letter-spacing:-0.5px; }
+  header h1 span.rr { color: var(--rr); }
+  header h1 span.vs { color: var(--muted); margin: 0 8px; font-size:1rem; }
+  header h1 span.srtf { color: var(--srtf); }
+  .badge {
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.7rem; color:var(--muted);
+    border:1px solid var(--border); border-radius:6px; padding:4px 10px;
+  }
+  /* ── LAYOUT ── */
+  .container { max-width: 1300px; margin: 0 auto; padding: 32px 24px; }
+  .section-title {
+    font-size: 0.7rem; font-weight:600; letter-spacing:3px; text-transform:uppercase;
+    color: var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:10px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  /* ── TABS ── */
+  .tabs { display:flex; gap:4px; margin-bottom:28px; background:var(--surface); border-radius:12px; padding:6px; width:fit-content; }
+  .tab {
+    font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:600;
+    padding:8px 20px; border-radius:8px; cursor:pointer; border:none;
+    background:transparent; color:var(--muted); transition:all 0.2s;
+  }
+  .tab.active { background:var(--accent); color:#fff; }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+  /* ── CARDS ── */
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:24px; margin-bottom:24px;
+  }
+  .card.rr-card { border-left: 3px solid var(--rr); }
+  .card.srtf-card { border-left: 3px solid var(--srtf); }
+  /* ── FORM ── */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  label { font-size:0.78rem; color:var(--muted); display:block; margin-bottom:6px; font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+  input[type=number], input[type=text] {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:10px 14px; color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+    transition: border-color 0.2s;
+  }
+  input[type=number]:focus, input[type=text]:focus { outline:none; border-color:var(--accent); }
+  input.error { border-color:var(--error) !important; }
+  .error-msg { font-size:0.72rem; color:var(--error); margin-top:4px; }
+  .btn {
+    font-family:'Syne',sans-serif; font-weight:700; letter-spacing:0.5px;
+    padding:12px 28px; border-radius:10px; border:none; cursor:pointer;
+    transition: all 0.2s; font-size:0.9rem;
+  }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:#6d28d9; transform:translateY(-1px); }
+  .btn-danger { background:#7f1d1d; color:#fca5a5; }
+  .btn-danger:hover { background:#991b1b; }
+  .btn-sm { padding:6px 14px; font-size:0.78rem; border-radius:7px; }
+  .btn-run { background:linear-gradient(135deg,var(--rr),var(--accent)); color:#fff; width:100%; padding:14px; font-size:1rem; margin-top:12px; }
+  .btn-run:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,194,255,0.25); }
+  /* ── PROCESS TABLE INPUT ── */
+  .proc-table { width:100%; border-collapse:separate; border-spacing:0 6px; }
+  .proc-table thead th {
+    font-size:0.72rem; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:1.5px; padding:0 10px 8px;
+    text-align:left;
+  }
+  .proc-table tbody td { padding:0 6px; }
+  .proc-table input { padding:8px 10px; font-size:0.85rem; }
+  .pid-badge {
+    display:inline-block; background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; padding:6px 14px; font-family:'JetBrains Mono',monospace;
+    font-size:0.85rem; color:var(--accent); font-weight:700;
+  }
+  /* ── READY QUEUE ── */
+  .queue-display {
+    display:flex; gap:6px; flex-wrap:wrap; min-height:44px;
+    background:var(--surface2); border-radius:10px; padding:10px 14px;
+    border:1px solid var(--border); align-items:center;
+  }
+  .queue-chip {
+    background:var(--rr); color:#000; font-family:'JetBrains Mono',monospace;
+    font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px;
+    animation: popIn 0.3s ease;
+  }
+  @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+  /* ── GANTT ── */
+  .gantt-wrap { overflow-x:auto; padding-bottom:8px; }
+  .gantt-chart { display:flex; gap:0; min-width:fit-content; margin-bottom:8px; }
+  .gantt-block {
+    height:48px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:0.78rem; font-weight:700;
+    position:relative; border-radius:0; border-right:2px solid var(--bg);
+    min-width:40px; transition: all 0.3s; cursor:default;
+  }
+  .gantt-block:first-child { border-radius:8px 0 0 8px; }
+  .gantt-block:last-child { border-radius:0 8px 8px 0; border-right:none; }
+  .gantt-block:hover { filter:brightness(1.2); z-index:10; }
+  .gantt-times { display:flex; min-width:fit-content; }
+  .gantt-time-label {
+    font-family:'JetBrains Mono',monospace; font-size:0.68rem;
+    color:var(--muted); text-align:left; padding-top:4px;
+  }
+  /* ── RESULTS TABLE ── */
+  .results-table { width:100%; border-collapse:collapse; }
+  .results-table th {
+    background:var(--surface2); padding:10px 14px;
+    font-size:0.72rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:1.5px; color:var(--muted); text-align:center;
+    border-bottom:2px solid var(--border);
+  }
+  .results-table td {
+    padding:10px 14px; text-align:center; font-family:'JetBrains Mono',monospace;
+    font-size:0.85rem; border-bottom:1px solid var(--border);
+  }
+  .results-table tr:last-child td { border-bottom:none; }
+  .results-table tr:hover td { background:var(--surface2); }
+  .avg-row td { color:var(--warn); font-weight:700; background:rgba(245,158,11,0.06); }
+  /* ── COMPARISON ── */
+  .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .metric-box {
+    background:var(--surface2); border-radius:12px; padding:20px;
+    border:1px solid var(--border);
+  }
+  .metric-name { font-size:0.75rem; color:var(--muted); font-weight:600; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+  .metric-bars { display:flex; flex-direction:column; gap:8px; }
+  .metric-bar-row { display:flex; align-items:center; gap:10px; }
+  .metric-bar-label { font-size:0.75rem; font-family:'JetBrains Mono',monospace; width:40px; }
+  .metric-bar-track { flex:1; height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+  .metric-bar-fill { height:100%; border-radius:4px; transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
+  .metric-val { font-family:'JetBrains Mono',monospace; font-size:0.75rem; width:45px; text-align:right; }
+  .winner-badge {
+    display:inline-block; font-size:0.7rem; font-weight:700; padding:3px 10px;
+    border-radius:20px; margin-left:8px;
+  }
+  .winner-rr { background:rgba(0,194,255,0.15); color:var(--rr); border:1px solid rgba(0,194,255,0.3); }
+  .winner-srtf { background:rgba(255,107,53,0.15); color:var(--srtf); border:1px solid rgba(255,107,53,0.3); }
+  .winner-tie { background:rgba(124,58,237,0.15); color:#a78bfa; border:1px solid rgba(124,58,237,0.3); }
+  /* ── CONCLUSION ── */
+  .conclusion-box {
+    background:var(--surface2); border-radius:12px; padding:20px;
+    border:1px solid var(--border); font-size:0.88rem; line-height:1.7;
+    color:var(--text);
+  }
+  .conclusion-box strong { color:var(--warn); }
+  /* ── ALERTS ── */
+  .alert {
+    padding:12px 16px; border-radius:10px; font-size:0.85rem;
+    margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;
+  }
+  .alert-error { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+  .alert-success { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+  .alert-info { background:rgba(0,194,255,0.08); border:1px solid rgba(0,194,255,0.2); color:#7dd3fc; }
+  /* ── COLOR LEGEND ── */
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:0.72rem; }
+  .legend-dot { width:12px; height:12px; border-radius:3px; }
+  /* ── SCENARIO BTNS ── */
+  .scenario-btns { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .scenario-btn { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 16px; font-size:0.78rem; font-family:'Syne',sans-serif; color:var(--text); cursor:pointer; transition:all 0.2s; }
+  .scenario-btn:hover { border-color:var(--accent); color:var(--accent); }
+  /* ── MISC ── */
+  .flex-between { display:flex; justify-content:space-between; align-items:center; }
+  .mt-8 { margin-top:8px; }
+  .mt-16 { margin-top:16px; }
+  .mt-24 { margin-top:24px; }
+  .mb-8 { margin-bottom:8px; }
+  .text-rr { color:var(--rr); }
+  .text-srtf { color:var(--srtf); }
+  .text-muted { color:var(--muted); font-size:0.82rem; }
+  .mono { font-family:'JetBrains Mono',monospace; }
+  .hidden { display:none; }
+  /* tooltip */
+  [data-tip] { position:relative; cursor:help; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position:absolute; bottom:120%; left:50%; transform:translateX(-50%);
+    background:#1e293b; border:1px solid var(--border); border-radius:8px;
+    padding:6px 12px; font-size:0.72rem; color:var(--text); white-space:nowrap;
+    z-index:999; pointer-events:none;
+  }
+  @media(max-width:768px) {
+    .grid-2,.compare-grid { grid-template-columns:1fr; }
+    header { padding:16px; }
+    .container { padding:20px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="rr">Round Robin</span><span class="vs">VS</span><span class="srtf">SRTF</span></h1>
+  <span class="badge">OS Scheduling Simulator</span>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('input')">① Input</button>
+    <button class="tab" onclick="switchTab('rr')">② Round Robin</button>
+    <button class="tab" onclick="switchTab('srtf')">③ SRTF</button>
+    <button class="tab" onclick="switchTab('compare')">④ Comparison</button>
+  </div>
+
+  <!-- ════════════════ TAB 1: INPUT ════════════════ -->
+  <div class="tab-pane active" id="tab-input">
+
+    <div class="section-title">Quick Scenarios</div>
+    <div class="scenario-btns">
+      <button class="scenario-btn" onclick="loadScenario('A')">Scenario A – Basic Mixed</button>
+      <button class="scenario-btn" onclick="loadScenario('B')">Scenario B – Quantum Sensitivity</button>
+      <button class="scenario-btn" onclick="loadScenario('C')">Scenario C – Short-Job Heavy</button>
+      <button class="scenario-btn" onclick="loadScenario('D')">Scenario D – Fairness Case</button>
+      <button class="scenario-btn" onclick="loadScenario('E')">Scenario E – Validation Test</button>
+    </div>
+
+    <div id="alerts-area"></div>
+
+    <div class="card">
+      <div class="section-title">Process Input</div>
+      <div class="grid-2 mb-8">
+        <div>
+          <label>Number of Processes</label>
+          <input type="number" id="numProc" min="1" max="10" value="4" oninput="buildTable()"/>
+        </div>
+        <div>
+          <label data-tip="Time Quantum for Round Robin (must be ≥ 1)">Time Quantum (RR)</label>
+          <input type="number" id="quantum" min="1" value="3" placeholder="e.g. 3"/>
+          <div id="quantum-err" class="error-msg hidden">❌ Quantum must be a positive integer ≥ 1</div>
+        </div>
+      </div>
+
+      <table class="proc-table" id="proc-table">
+        <thead>
+          <tr>
+            <th>Process</th>
+            <th>Arrival Time</th>
+            <th>Burst Time</th>
+            <th>Priority (optional)</th>
+          </tr>
+        </thead>
+        <tbody id="proc-body"></tbody>
+      </table>
+
+      <button class="btn btn-run" onclick="runSimulation()">▶ Run Simulation</button>
+    </div>
+
+    <div class="card" id="queue-panel" style="display:none">
+      <div class="section-title">Ready Queue Snapshot (Round Robin)</div>
+      <div class="queue-display" id="queue-display"></div>
+      <div class="text-muted mt-8">Processes waiting in the circular queue at time of first dispatch</div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════ TAB 2: ROUND ROBIN ════════════════ -->
+  <div class="tab-pane" id="tab-rr">
+    <div class="card rr-card">
+      <div class="flex-between mb-8">
+        <div class="section-title" style="margin-bottom:0">Gantt Chart — <span class="text-rr">Round Robin</span></div>
+        <span id="rr-quantum-label" class="badge text-rr">Q = ?</span>
+      </div>
+      <div id="rr-legend" class="legend mt-8"></div>
+      <div class="gantt-wrap">
+        <div class="gantt-chart" id="rr-gantt"></div>
+        <div class="gantt-times" id="rr-times"></div>
+      </div>
+    </div>
+    <div class="card rr-card">
+      <div class="section-title">Results Table — <span class="text-rr">Round Robin</span></div>
+      <div style="overflow-x:auto">
+        <table class="results-table" id="rr-table">
+          <thead><tr><th>Process</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+          <tbody id="rr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TAB 3: SRTF ════════════════ -->
+  <div class="tab-pane" id="tab-srtf">
+    <div class="card srtf-card">
+      <div class="section-title">Gantt Chart — <span class="text-srtf">SRTF</span></div>
+      <div id="srtf-legend" class="legend mt-8"></div>
+      <div class="gantt-wrap">
+        <div class="gantt-chart" id="srtf-gantt"></div>
+        <div class="gantt-times" id="srtf-times"></div>
+      </div>
+    </div>
+    <div class="card srtf-card">
+      <div class="section-title">Results Table — <span class="text-srtf">SRTF</span></div>
+      <div style="overflow-x:auto">
+        <table class="results-table" id="srtf-table">
+          <thead><tr><th>Process</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+          <tbody id="srtf-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TAB 4: COMPARISON ════════════════ -->
+  <div class="tab-pane" id="tab-compare">
+    <div class="compare-grid">
+      <div class="metric-box">
+        <div class="metric-name">Avg Waiting Time <span id="wt-winner" class="winner-badge"></span></div>
+        <div class="metric-bars">
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-rr">RR</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-rr-wt" style="background:var(--rr);width:0%"></div></div>
+            <div class="metric-val" id="val-rr-wt">–</div>
+          </div>
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-srtf">SRTF</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-srtf-wt" style="background:var(--srtf);width:0%"></div></div>
+            <div class="metric-val" id="val-srtf-wt">–</div>
+          </div>
+        </div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Avg Turnaround Time <span id="tat-winner" class="winner-badge"></span></div>
+        <div class="metric-bars">
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-rr">RR</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-rr-tat" style="background:var(--rr);width:0%"></div></div>
+            <div class="metric-val" id="val-rr-tat">–</div>
+          </div>
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-srtf">SRTF</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-srtf-tat" style="background:var(--srtf);width:0%"></div></div>
+            <div class="metric-val" id="val-srtf-tat">–</div>
+          </div>
+        </div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Avg Response Time <span id="rt-winner" class="winner-badge"></span></div>
+        <div class="metric-bars">
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-rr">RR</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-rr-rt" style="background:var(--rr);width:0%"></div></div>
+            <div class="metric-val" id="val-rr-rt">–</div>
+          </div>
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-srtf">SRTF</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-srtf-rt" style="background:var(--srtf);width:0%"></div></div>
+            <div class="metric-val" id="val-srtf-rt">–</div>
+          </div>
+        </div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Throughput (proc/unit)</div>
+        <div class="metric-bars">
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-rr">RR</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-rr-tp" style="background:var(--rr);width:0%"></div></div>
+            <div class="metric-val" id="val-rr-tp">–</div>
+          </div>
+          <div class="metric-bar-row">
+            <div class="metric-bar-label text-srtf">SRTF</div>
+            <div class="metric-bar-track"><div class="metric-bar-fill" id="bar-srtf-tp" style="background:var(--srtf);width:0%"></div></div>
+            <div class="metric-val" id="val-srtf-tp">–</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-24">
+      <div class="section-title">Analysis Summary</div>
+      <div class="conclusion-box" id="conclusion-box">
+        Run a simulation to see the analysis.
+      </div>
+    </div>
+
+    <div class="card mt-24">
+      <div class="section-title">Required Analysis Questions</div>
+      <div id="analysis-qa" class="conclusion-box">Run a simulation first.</div>
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ══════════════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════════════
+const COLORS = [
+  '#00c2ff','#ff6b35','#7c3aed','#22c55e','#f59e0b',
+  '#ec4899','#14b8a6','#f43f5e','#a78bfa','#fb923c'
+];
+
+function $(id){ return document.getElementById(id); }
+
+function showAlert(msg, type='info'){
+  const d = document.createElement('div');
+  d.className = `alert alert-${type}`;
+  d.innerHTML = `<span>${type==='error'?'❌':type==='success'?'✅':'ℹ️'}</span><span>${msg}</span>`;
+  $('alerts-area').appendChild(d);
+  setTimeout(()=>d.remove(), 5000);
+}
+
+function clearAlerts(){ $('alerts-area').innerHTML=''; }
+
+function round2(n){ return Math.round(n*100)/100; }
+
+// ══════════════════════════════════════════════
+//  TAB SWITCHING
+// ══════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+//  BUILD INPUT TABLE
+// ══════════════════════════════════════════════
+function buildTable(){
+  const n = parseInt($('numProc').value)||1;
+  const tbody = $('proc-body');
+  const current = tbody.querySelectorAll('tr').length;
+  // add rows
+  for(let i=current; i<n; i++){
+    const tr = document.createElement('tr');
+    tr.id = `prow-${i}`;
+    tr.innerHTML = `
+      <td><span class="pid-badge">P${i+1}</span></td>
+      <td><input type="number" id="at-${i}" min="0" value="${i}" placeholder="0"/></td>
+      <td><input type="number" id="bt-${i}" min="1" value="${Math.floor(Math.random()*8)+2}" placeholder="1"/></td>
+      <td><input type="number" id="pr-${i}" min="1" value="${i+1}" placeholder="–"/></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  // remove extra rows
+  for(let i=n; i<current; i++){
+    const r = $(`prow-${i}`);
+    if(r) r.remove();
+  }
+}
+
+// ══════════════════════════════════════════════
+//  SCENARIOS
+// ══════════════════════════════════════════════
+const SCENARIOS = {
+  A: { q:3, procs:[{at:0,bt:5},{at:1,bt:3},{at:2,bt:8},{at:3,bt:6}] },
+  B: { q:1, procs:[{at:0,bt:6},{at:0,bt:4},{at:0,bt:2},{at:0,bt:3}] },
+  C: { q:4, procs:[{at:0,bt:1},{at:1,bt:2},{at:2,bt:1},{at:3,bt:3},{at:4,bt:2},{at:5,bt:1}] },
+  D: { q:2, procs:[{at:0,bt:4},{at:0,bt:4},{at:0,bt:4},{at:0,bt:4}] },
+  E: { q:-1, procs:[{at:0,bt:5},{at:1,bt:-3},{at:2,bt:4}] }, // invalid bt triggers validation
+};
+
+function loadScenario(key){
+  clearAlerts();
+  const sc = SCENARIOS[key];
+  $('numProc').value = sc.procs.length;
+  $('quantum').value = sc.q;
+  buildTable();
+  sc.procs.forEach((p,i)=>{
+    if($(`at-${i}`)) $(`at-${i}`).value = p.at;
+    if($(`bt-${i}`)) $(`bt-${i}`).value = p.bt;
+  });
+  if(key==='E') showAlert('Scenario E: Process P2 has an invalid burst time (-3). Watch the validator catch it.','info');
+  if(key==='B') showAlert('Scenario B: Quantum = 1. All processes arrive at time 0. Watch RR behavior tightly.','info');
+}
+
+// ══════════════════════════════════════════════
+//  VALIDATION
+// ══════════════════════════════════════════════
+function validate(procs, q){
+  const errors = [];
+  if(!Number.isInteger(q)||q<1) errors.push('Time Quantum must be a positive integer ≥ 1');
+  const ids = new Set();
+  procs.forEach((p,i)=>{
+    if(!Number.isFinite(p.at)||p.at<0) errors.push(`P${i+1}: Arrival Time must be ≥ 0`);
+    if(!Number.isFinite(p.bt)||p.bt<1) errors.push(`P${i+1}: Burst Time must be ≥ 1`);
+    if(ids.has(`${p.at}-${p.bt}`)) errors.push(`P${i+1}: Duplicate process data detected`);
+    ids.add(`${p.at}-${p.bt}`);
+  });
+  return errors;
+}
+
+// ══════════════════════════════════════════════
+//  ROUND ROBIN ALGORITHM
+// ══════════════════════════════════════════════
+function simulateRR(procs, quantum){
+  const n = procs.length;
+  const remaining = procs.map(p=>p.bt);
+  const ct = new Array(n).fill(0);
+  const rt = new Array(n).fill(-1);
+  const gantt = [];
+  const readyQueue = [];
+  let time = 0;
+  let done = 0;
+  // sort by arrival
+  const order = procs.map((_,i)=>i).sort((a,b)=>procs[a].at-procs[b].at);
+  let oi = 0;
+  // initial enqueue
+  while(oi<n && procs[order[oi]].at<=time) readyQueue.push(order[oi++]);
+
+  const firstQueueSnapshot = [...readyQueue];
+
+  while(done<n){
+    if(readyQueue.length===0){
+      // CPU idle
+      if(oi<n){
+        time = procs[order[oi]].at;
+        while(oi<n && procs[order[oi]].at<=time) readyQueue.push(order[oi++]);
+      } else break;
+    }
+    const idx = readyQueue.shift();
+    if(rt[idx]===-1) rt[idx]=time;
+    const exec = Math.min(quantum, remaining[idx]);
+    gantt.push({pid:idx, start:time, end:time+exec});
+    time += exec;
+    remaining[idx] -= exec;
+    // enqueue new arrivals
+    while(oi<n && procs[order[oi]].at<=time) readyQueue.push(order[oi++]);
+    if(remaining[idx]>0){
+      readyQueue.push(idx);
+    } else {
+      ct[idx]=time; done++;
+    }
+  }
+  return {gantt, ct, rt, firstQueueSnapshot};
+}
+
+// ══════════════════════════════════════════════
+//  SRTF ALGORITHM
+// ══════════════════════════════════════════════
+function simulateSRTF(procs){
+  const n = procs.length;
+  const remaining = procs.map(p=>p.bt);
+  const ct = new Array(n).fill(0);
+  const rt = new Array(n).fill(-1);
+  const gantt = [];
+  let time = 0;
+  let done = 0;
+  let prev = -1;
+
+  while(done<n){
+    // find available process with shortest remaining time
+    let best = -1, minR = Infinity;
+    for(let i=0;i<n;i++){
+      if(procs[i].at<=time && remaining[i]>0){
+        if(remaining[i]<minR || (remaining[i]===minR && procs[i].at<procs[best].at)){
+          minR=remaining[i]; best=i;
+        }
+      }
+    }
+    if(best===-1){ time++; continue; }
+    if(rt[best]===-1) rt[best]=time;
+    // run 1 unit
+    if(gantt.length>0 && gantt[gantt.length-1].pid===best){
+      gantt[gantt.length-1].end++;
+    } else {
+      gantt.push({pid:best, start:time, end:time+1});
+    }
+    time++;
+    remaining[best]--;
+    if(remaining[best]===0){ ct[best]=time; done++; }
+  }
+  return {gantt, ct, rt};
+}
+
+// ══════════════════════════════════════════════
+//  RENDER GANTT
+// ══════════════════════════════════════════════
+function renderGantt(ganttId, timesId, legendId, gantt, procs, colorBase){
+  const gc = $(ganttId); const tc = $(timesId);
+  gc.innerHTML=''; tc.innerHTML='';
+  if(!gantt.length){ gc.innerHTML='<span style="color:var(--muted);padding:12px">No data</span>'; return; }
+
+  const totalTime = gantt[gantt.length-1].end;
+  const scale = Math.max(40, Math.min(80, 900/totalTime));
+
+  // legend
+  const seenPids = [...new Set(gantt.map(g=>g.pid))];
+  $(legendId).innerHTML = seenPids.map(pid=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${COLORS[pid%COLORS.length]}"></div>
+      <span>P${pid+1}</span>
+    </div>`).join('');
+
+  // blocks
+  gantt.forEach(g=>{
+    const w = (g.end-g.start)*scale;
+    const div = document.createElement('div');
+    div.className='gantt-block';
+    div.style.cssText=`width:${w}px;background:${COLORS[g.pid%COLORS.length]};color:#000;`;
+    div.textContent=`P${g.pid+1}`;
+    div.title=`P${g.pid+1}: [${g.start} → ${g.end}] duration=${g.end-g.start}`;
+    gc.appendChild(div);
+  });
+
+  // time labels
+  const times = [...new Set(gantt.flatMap(g=>[g.start,g.end]))].sort((a,b)=>a-b);
+  let acc=0;
+  times.forEach((t,i)=>{
+    const lbl = document.createElement('div');
+    lbl.className='gantt-time-label';
+    if(i===0){ lbl.style.width='0px'; lbl.textContent=t; }
+    else {
+      const prev=times[i-1];
+      lbl.style.width=`${(t-prev)*scale}px`;
+      lbl.textContent=t;
+    }
+    tc.appendChild(lbl);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  RENDER RESULTS TABLE
+// ══════════════════════════════════════════════
+function renderTable(tbodyId, procs, ct, rt){
+  const tbody=$(tbodyId);
+  tbody.innerHTML='';
+  let sumWT=0,sumTAT=0,sumRT=0;
+  procs.forEach((p,i)=>{
+    const tat=ct[i]-p.at, wt=tat-p.bt, rsp=rt[i]-p.at;
+    sumWT+=wt; sumTAT+=tat; sumRT+=rsp;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:${COLORS[i%COLORS.length]};font-weight:700">P${i+1}</td>
+      <td>${p.at}</td><td>${p.bt}</td><td>${ct[i]}</td>
+      <td>${tat}</td><td>${wt}</td><td>${rsp}</td>`;
+    tbody.appendChild(tr);
+  });
+  const n=procs.length;
+  const avgRow=document.createElement('tr');
+  avgRow.className='avg-row';
+  avgRow.innerHTML=`<td colspan="4">Averages</td>
+    <td>${round2(sumTAT/n)}</td><td>${round2(sumWT/n)}</td><td>${round2(sumRT/n)}</td>`;
+  tbody.appendChild(avgRow);
+  return {avgWT:sumWT/n, avgTAT:sumTAT/n, avgRT:sumRT/n};
+}
+
+// ══════════════════════════════════════════════
+//  COMPARISON BARS
+// ══════════════════════════════════════════════
+function setBar(barId, valId, val, maxVal){
+  const pct = maxVal>0 ? Math.min(100, (val/maxVal)*100) : 0;
+  $(barId).style.width = pct+'%';
+  $(valId).textContent = round2(val);
+}
+
+function setWinner(spanId, rrVal, srtfVal, lowerIsBetter=true){
+  const span=$(spanId);
+  if(rrVal===srtfVal){ span.className='winner-badge winner-tie'; span.textContent='TIE'; }
+  else if((rrVal<srtfVal)===lowerIsBetter){ span.className='winner-badge winner-rr'; span.textContent='RR ✓'; }
+  else { span.className='winner-badge winner-srtf'; span.textContent='SRTF ✓'; }
+}
+
+// ══════════════════════════════════════════════
+//  MAIN RUN
+// ══════════════════════════════════════════════
+function runSimulation(){
+  clearAlerts();
+  const n = parseInt($('numProc').value)||0;
+  const q = parseInt($('quantum').value);
+  const procs = [];
+  for(let i=0;i<n;i++){
+    procs.push({
+      at: parseFloat($(`at-${i}`).value),
+      bt: parseFloat($(`bt-${i}`).value),
+      pr: parseFloat($(`pr-${i}`).value)||i+1
+    });
+  }
+
+  const errors = validate(procs, q);
+  if(errors.length){
+    errors.forEach(e=>showAlert(e,'error'));
+    return;
+  }
+
+  // ── RR
+  const rrRes = simulateRR(procs, q);
+  renderGantt('rr-gantt','rr-times','rr-legend', rrRes.gantt, procs, 'rr');
+  const rrMetrics = renderTable('rr-tbody', procs, rrRes.ct, rrRes.rt);
+  $('rr-quantum-label').textContent = `Q = ${q}`;
+
+  // ready queue
+  const queuePanel = $('queue-panel');
+  const queueDisplay = $('queue-display');
+  queuePanel.style.display='block';
+  queueDisplay.innerHTML = rrRes.firstQueueSnapshot.length
+    ? rrRes.firstQueueSnapshot.map(i=>`<span class="queue-chip">P${i+1}</span>`).join('')
+    : '<span class="text-muted">Empty at time 0</span>';
+
+  // ── SRTF
+  const srtfRes = simulateSRTF(procs);
+  renderGantt('srtf-gantt','srtf-times','srtf-legend', srtfRes.gantt, procs, 'srtf');
+  const srtfMetrics = renderTable('srtf-tbody', procs, srtfRes.ct, srtfRes.rt);
+
+  // ── COMPARISON BARS
+  const maxWT = Math.max(rrMetrics.avgWT, srtfMetrics.avgWT, 0.001);
+  const maxTAT = Math.max(rrMetrics.avgTAT, srtfMetrics.avgTAT, 0.001);
+  const maxRT = Math.max(rrMetrics.avgRT, srtfMetrics.avgRT, 0.001);
+
+  setBar('bar-rr-wt','val-rr-wt',rrMetrics.avgWT,maxWT);
+  setBar('bar-srtf-wt','val-srtf-wt',srtfMetrics.avgWT,maxWT);
+  setBar('bar-rr-tat','val-rr-tat',rrMetrics.avgTAT,maxTAT);
+  setBar('bar-srtf-tat','val-srtf-tat',srtfMetrics.avgTAT,maxTAT);
+  setBar('bar-rr-rt','val-rr-rt',rrMetrics.avgRT,maxRT);
+  setBar('bar-srtf-rt','val-srtf-rt',srtfMetrics.avgRT,maxRT);
+
+  const rrTP = round2(n / rrRes.gantt[rrRes.gantt.length-1].end);
+  const srtfTP = round2(n / srtfRes.gantt[srtfRes.gantt.length-1].end);
+  const maxTP = Math.max(rrTP,srtfTP,0.001);
+  setBar('bar-rr-tp','val-rr-tp',rrTP,maxTP);
+  setBar('bar-srtf-tp','val-srtf-tp',srtfTP,maxTP);
+
+  setWinner('wt-winner', rrMetrics.avgWT, srtfMetrics.avgWT, true);
+  setWinner('tat-winner', rrMetrics.avgTAT, srtfMetrics.avgTAT, true);
+  setWinner('rt-winner', rrMetrics.avgRT, srtfMetrics.avgRT, true);
+
+  // ── CONCLUSION
+  const wtWinner = rrMetrics.avgWT<=srtfMetrics.avgWT ? 'Round Robin':'SRTF';
+  const tatWinner = rrMetrics.avgTAT<=srtfMetrics.avgTAT ? 'Round Robin':'SRTF';
+  const rtWinner = rrMetrics.avgRT<=srtfMetrics.avgRT ? 'Round Robin':'SRTF';
+
+  $('conclusion-box').innerHTML = `
+    <p>With <strong>${n} processes</strong> and <strong>Time Quantum = ${q}</strong>:</p>
+    <br>
+    <p>✅ <strong>Avg Waiting Time:</strong> RR = ${round2(rrMetrics.avgWT)}, SRTF = ${round2(srtfMetrics.avgWT)} → <strong>${tatWinner}</strong> wins</p>
+    <p>✅ <strong>Avg Turnaround Time:</strong> RR = ${round2(rrMetrics.avgTAT)}, SRTF = ${round2(srtfMetrics.avgTAT)} → <strong>${tatWinner}</strong> wins</p>
+    <p>✅ <strong>Avg Response Time:</strong> RR = ${round2(rrMetrics.avgRT)}, SRTF = ${round2(srtfMetrics.avgRT)} → <strong>${rtWinner}</strong> wins</p>
+    <br>
+    <p>⚖️ <strong>Fairness:</strong> Round Robin provides equal CPU time slices, making it fairer. SRTF may starve long processes.</p>
+    <p>⚡ <strong>Efficiency:</strong> SRTF minimizes average wait and TAT by always choosing the shortest job — optimal for minimizing these metrics.</p>
+    <p>🔄 <strong>Preemption:</strong> SRTF preempts aggressively whenever a shorter job arrives. RR preempts only at quantum boundaries.</p>
+    <p>⚙️ <strong>Quantum Effect:</strong> A smaller quantum (Q=${q}) ${q<=2?'increases context switches but improves fairness and response time.':'reduces context switches but may delay short jobs.'}</p>
+    <br>
+    <p>📌 <strong>Recommendation:</strong> Use <strong>${srtfMetrics.avgWT<rrMetrics.avgWT?'SRTF for efficiency-critical workloads':'Round Robin for fairness-critical / interactive workloads'}</strong>.</p>
+  `;
+
+  $('analysis-qa').innerHTML = `
+    <p><strong>Q1: Which algorithm gave better average waiting time?</strong><br>
+    → <span style="color:var(--warn)">${wtWinner}</span> (RR: ${round2(rrMetrics.avgWT)}, SRTF: ${round2(srtfMetrics.avgWT)})</p><br>
+    <p><strong>Q2: Which algorithm gave better response time?</strong><br>
+    → <span style="color:var(--warn)">${rtWinner}</span> (RR: ${round2(rrMetrics.avgRT)}, SRTF: ${round2(srtfMetrics.avgRT)})</p><br>
+    <p><strong>Q3: Did Round Robin appear fairer across all processes?</strong><br>
+    → Yes. RR gives each process equal CPU time slices regardless of burst time, ensuring no starvation. SRTF can indefinitely delay long processes if short ones keep arriving.</p><br>
+    <p><strong>Q4: Did SRTF complete short jobs faster?</strong><br>
+    → Yes. SRTF always selects the process with the shortest remaining time, so short jobs complete almost immediately.</p><br>
+    <p><strong>Q5: How did quantum = ${q} affect RR results?</strong><br>
+    → ${q<=2?`Small quantum (${q}): High context-switch overhead, but excellent response time and fairness. Each process gets CPU frequently.`:`Larger quantum (${q}): Fewer context switches, but processes may wait longer. Behavior approaches FCFS as quantum grows.`}</p><br>
+    <p><strong>Q6: Which algorithm would you recommend?</strong><br>
+    → For <em>interactive systems</em>: <strong>Round Robin</strong> (guaranteed response). For <em>batch/throughput-optimized</em>: <strong>SRTF</strong>. The choice depends on whether fairness or efficiency is the priority.</p>
+  `;
+
+  showAlert('Simulation complete! Switch to the Round Robin, SRTF, and Comparison tabs.','success');
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+buildTable();
+</script>
+</body>
+</html>
