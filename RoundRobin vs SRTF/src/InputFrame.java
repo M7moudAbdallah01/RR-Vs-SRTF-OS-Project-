@@ -169,36 +169,76 @@ public class InputFrame extends javax.swing.JFrame {
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // TODO add your handling code here:
                                                 
+                                             
     try {
-        // 1. تعريف القائمة (عشان الخط الأحمر يختفي)
+        // 1. التحقق من الـ Quantum Field
+        String qStr = quantumField.getText().trim();
+        if (qStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Error: Quantum field cannot be empty!", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int q;
+        try {
+            q = Integer.parseInt(qStr);
+            if (q <= 0) {
+                JOptionPane.showMessageDialog(this, "Error: Quantum must be greater than 0!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Error: Quantum must be a valid integer!", "Type Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 2. التحقق من بيانات الجدول
         ArrayList<Process> processList = new ArrayList<>();
         DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
 
-        // 2. قراءة البيانات من الجدول
+        if (model.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Error: Please generate a table and enter process data!", "Empty Table", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         for (int i = 0; i < model.getRowCount(); i++) {
-            if (model.getValueAt(i, 1) != null && model.getValueAt(i, 2) != null) {
-                int id = i + 1;
-                int arrival = Integer.parseInt(model.getValueAt(i, 1).toString());
-                int burst = Integer.parseInt(model.getValueAt(i, 2).toString());
-                processList.add(new Process(id, arrival, burst));
+            try {
+                Object arrivalObj = model.getValueAt(i, 1);
+                Object burstObj = model.getValueAt(i, 2);
+
+                if (arrivalObj == null || burstObj == null || arrivalObj.toString().isEmpty() || burstObj.toString().isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival and Burst times are required!", "Missing Data", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                int arrival = Integer.parseInt(arrivalObj.toString());
+                int burst = Integer.parseInt(burstObj.toString());
+
+                if (arrival < 0) {
+                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival Time cannot be negative!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (burst <= 0) {
+                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Burst Time must be greater than 0!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                processList.add(new Process(i + 1, arrival, burst));
+
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival and Burst must be valid integers!", "Type Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
         }
 
-        // 3. قراءة الـ Quantum (تأكد إن اسم التكست بوكس عندك quantumField)
-        // لو اسمه مختلف غيره هنا
-        int q = Integer.parseInt(quantumField.getText()); 
-
-        // 4. تصفير البيانات قبل التشغيل (عشان ما يعلقش)
+        // 3. تشغيل الحسابات وفتح صفحة النتائج (بعد التأكد من صحة كل البيانات)
+        // تصفير البيانات قبل الإرسال لضمان عدم حدوث Freeze
         for (Process p : processList) {
             p.remainingTime = p.burstTime;
             p.started = false;
         }
 
-        // 5. تشغيل الخوارزميات (إرسال نسخ منفصلة)
         Result rrRes = RoundRobinScheduler.run(new ArrayList<>(processList), q);
         Result srtfRes = SRTFScheduler.run(new ArrayList<>(processList));
 
-        // 6. فتح الصفحة الجديدة (تأكد إن السطور دي بالترتيب ده)
         if (rrRes != null && srtfRes != null) {
             ResultFrame resFrame = new ResultFrame(rrRes, srtfRes);
             resFrame.setVisible(true);
@@ -206,9 +246,10 @@ public class InputFrame extends javax.swing.JFrame {
         }
 
     } catch (Exception e) {
-        javax.swing.JOptionPane.showMessageDialog(this, "تأكد من إدخال جميع البيانات والـ Quantum بشكل صحيح");
+        JOptionPane.showMessageDialog(this, "Unexpected Error: " + e.getMessage());
         e.printStackTrace();
     }
+
 
     }//GEN-LAST:event_jButton2ActionPerformed
 
