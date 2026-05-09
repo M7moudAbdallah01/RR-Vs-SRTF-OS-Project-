@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Round Robin vs SRTF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-rr">RR</span>
+        <span class="logo-vs">vs</span>
+        <span class="logo-srtf">SRTF</span>
+        <span class="logo-sub">Scheduling Simulator</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══════════ SECTION 1: INPUT ══════════ -->
+    <section class="section" id="sec-input">
+      <h2 class="sec-title">① Process Input</h2>
+
+      <!-- Scenario Buttons -->
+      <div class="scenarios-row">
+        <span class="scenarios-label">Quick Load:</span>
+        <button onclick="loadScenario('A')">A – Basic</button>
+        <button onclick="loadScenario('B')">B – Quantum</button>
+        <button onclick="loadScenario('C')">C – Short Jobs</button>
+        <button onclick="loadScenario('D')">D – Fairness</button>
+        <button onclick="loadScenario('E')">E – Validation</button>
+      </div>
+
+      <!-- Alerts -->
+      <div id="alerts"></div>
+
+      <!-- Controls Row -->
+      <div class="controls-row">
+        <div class="control-group">
+          <label>Processes</label>
+          <input type="number" id="numProc" min="1" max="10" value="4" oninput="buildTable()"/>
+        </div>
+        <div class="control-group">
+          <label>Time Quantum (RR)</label>
+          <input type="number" id="quantum" min="1" value="3"/>
+        </div>
+      </div>
+
+      <!-- Process Table -->
+      <div class="table-wrap">
+        <table class="input-table">
+          <thead>
+            <tr>
+              <th>Process</th>
+              <th>Arrival Time</th>
+              <th>Burst Time</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody id="proc-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Run Button -->
+      <button class="run-btn" onclick="runSimulation()">▶ Run Simulation</button>
+
+      <!-- Ready Queue -->
+      <div class="queue-box" id="queue-box" style="display:none">
+        <div class="queue-title">Ready Queue (RR) — at dispatch time</div>
+        <div class="queue-chips" id="queue-chips"></div>
+      </div>
+    </section>
+
+    <!-- ══════════ SECTION 2: ROUND ROBIN ══════════ -->
+    <section class="section rr-section" id="sec-rr">
+      <h2 class="sec-title rr-color">② Round Robin Results <span id="rr-q-label" class="q-badge"></span></h2>
+
+      <div class="gantt-card">
+        <div class="card-label">Gantt Chart</div>
+        <div id="rr-legend" class="legend"></div>
+        <div class="gantt-scroll">
+          <div class="gantt-bar" id="rr-gantt"></div>
+          <div class="gantt-axis" id="rr-axis"></div>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="card-label">Metrics Table</div>
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead>
+              <tr><th>Process</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr>
+            </thead>
+            <tbody id="rr-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ SECTION 3: SRTF ══════════ -->
+    <section class="section srtf-section" id="sec-srtf">
+      <h2 class="sec-title srtf-color">③ SRTF Results</h2>
+
+      <div class="gantt-card">
+        <div class="card-label">Gantt Chart</div>
+        <div id="srtf-legend" class="legend"></div>
+        <div class="gantt-scroll">
+          <div class="gantt-bar" id="srtf-gantt"></div>
+          <div class="gantt-axis" id="srtf-axis"></div>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="card-label">Metrics Table</div>
+        <div class="table-wrap">
+          <table class="result-table">
+            <thead>
+              <tr><th>Process</th><th>AT</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr>
+            </thead>
+            <tbody id="srtf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ SECTION 4: COMPARISON ══════════ -->
+    <section class="section" id="sec-compare">
+      <h2 class="sec-title">④ Comparison & Conclusion</h2>
+
+      <!-- Metric Bars -->
+      <div class="compare-grid">
+
+        <div class="metric-card">
+          <div class="metric-title">Avg Waiting Time <span id="wt-badge" class="winner"></span></div>
+          <div class="bar-row">
+            <span class="rr-color bar-lbl">RR</span>
+            <div class="bar-track"><div class="bar-fill rr-fill" id="bar-rr-wt"></div></div>
+            <span class="bar-val mono" id="val-rr-wt">–</span>
+          </div>
+          <div class="bar-row">
+            <span class="srtf-color bar-lbl">SRTF</span>
+            <div class="bar-track"><div class="bar-fill srtf-fill" id="bar-srtf-wt"></div></div>
+            <span class="bar-val mono" id="val-srtf-wt">–</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Avg Turnaround Time <span id="tat-badge" class="winner"></span></div>
+          <div class="bar-row">
+            <span class="rr-color bar-lbl">RR</span>
+            <div class="bar-track"><div class="bar-fill rr-fill" id="bar-rr-tat"></div></div>
+            <span class="bar-val mono" id="val-rr-tat">–</span>
+          </div>
+          <div class="bar-row">
+            <span class="srtf-color bar-lbl">SRTF</span>
+            <div class="bar-track"><div class="bar-fill srtf-fill" id="bar-srtf-tat"></div></div>
+            <span class="bar-val mono" id="val-srtf-tat">–</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Avg Response Time <span id="rt-badge" class="winner"></span></div>
+          <div class="bar-row">
+            <span class="rr-color bar-lbl">RR</span>
+            <div class="bar-track"><div class="bar-fill rr-fill" id="bar-rr-rt"></div></div>
+            <span class="bar-val mono" id="val-rr-rt">–</span>
+          </div>
+          <div class="bar-row">
+            <span class="srtf-color bar-lbl">SRTF</span>
+            <div class="bar-track"><div class="bar-fill srtf-fill" id="bar-srtf-rt"></div></div>
+            <span class="bar-val mono" id="val-srtf-rt">–</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Throughput (proc/unit)</div>
+          <div class="bar-row">
+            <span class="rr-color bar-lbl">RR</span>
+            <div class="bar-track"><div class="bar-fill rr-fill" id="bar-rr-tp"></div></div>
+            <span class="bar-val mono" id="val-rr-tp">–</span>
+          </div>
+          <div class="bar-row">
+            <span class="srtf-color bar-lbl">SRTF</span>
+            <div class="bar-track"><div class="bar-fill srtf-fill" id="bar-srtf-tp"></div></div>
+            <span class="bar-val mono" id="val-srtf-tp">–</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Analysis -->
+      <div class="analysis-box" id="analysis-box">
+        <div class="analysis-placeholder">Run a simulation to see the comparison analysis.</div>
+      </div>
+
+      <!-- Q&A -->
+      <div class="qa-box" id="qa-box">
+        <div class="card-label">Required Analysis Questions</div>
+        <div id="qa-content" class="qa-placeholder">Run a simulation first.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
