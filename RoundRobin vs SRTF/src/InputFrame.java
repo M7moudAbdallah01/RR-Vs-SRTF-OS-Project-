@@ -168,42 +168,48 @@ public class InputFrame extends javax.swing.JFrame {
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // TODO add your handling code here:
-      try {
-    // 1. تجهيز القائمة
-    ArrayList<Process> processList = new ArrayList<>();
-    DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+                                                
+    try {
+        // 1. تعريف القائمة (عشان الخط الأحمر يختفي)
+        ArrayList<Process> processList = new ArrayList<>();
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
 
-    for (int i = 0; i < model.getRowCount(); i++) {
-        // قراءة الـ ID وتحويله لـ int (لو فيه حروف بيمسحها وياخد الرقم)
-        String idStr = model.getValueAt(i, 0).toString();
-        int id = Integer.parseInt(idStr.replaceAll("[^0-9]", ""));
-        
-        int arrival = Integer.parseInt(model.getValueAt(i, 1).toString());
-        int burst = Integer.parseInt(model.getValueAt(i, 2).toString());
-        
-        // إنشاء العمليات (تأكد أن Process موجودة في Models package)
-        processList.add(new Process(id, arrival, burst));
+        // 2. قراءة البيانات من الجدول
+        for (int i = 0; i < model.getRowCount(); i++) {
+            if (model.getValueAt(i, 1) != null && model.getValueAt(i, 2) != null) {
+                int id = i + 1;
+                int arrival = Integer.parseInt(model.getValueAt(i, 1).toString());
+                int burst = Integer.parseInt(model.getValueAt(i, 2).toString());
+                processList.add(new Process(id, arrival, burst));
+            }
+        }
+
+        // 3. قراءة الـ Quantum (تأكد إن اسم التكست بوكس عندك quantumField)
+        // لو اسمه مختلف غيره هنا
+        int q = Integer.parseInt(quantumField.getText()); 
+
+        // 4. تصفير البيانات قبل التشغيل (عشان ما يعلقش)
+        for (Process p : processList) {
+            p.remainingTime = p.burstTime;
+            p.started = false;
+        }
+
+        // 5. تشغيل الخوارزميات (إرسال نسخ منفصلة)
+        Result rrRes = RoundRobinScheduler.run(new ArrayList<>(processList), q);
+        Result srtfRes = SRTFScheduler.run(new ArrayList<>(processList));
+
+        // 6. فتح الصفحة الجديدة (تأكد إن السطور دي بالترتيب ده)
+        if (rrRes != null && srtfRes != null) {
+            ResultFrame resFrame = new ResultFrame(rrRes, srtfRes);
+            resFrame.setVisible(true);
+            this.dispose();
+        }
+
+    } catch (Exception e) {
+        javax.swing.JOptionPane.showMessageDialog(this, "تأكد من إدخال جميع البيانات والـ Quantum بشكل صحيح");
+        e.printStackTrace();
     }
 
-    // 2. قراءة الـ Quantum
-    int quantum = Integer.parseInt(quantumField.getText());
-
-    // 3. تشغيل الخوارزميات (استخدام اسم الكلاس مباشرة لأن الدالة static)
-    // بنبعت نسخة جديدة من القائمة لكل خوارزمية عشان ميحصلش تداخل في الحسابات
-    Result rrResults = RoundRobinScheduler.run(new ArrayList<>(processList), quantum);
-    
-    // تأكد من اسم الدالة في SRTFScheduler لو كانت run برضه غيرها هنا
-    Result srtfResults = SRTFScheduler.run(new ArrayList<>(processList)); 
-
-    // 4. فتح صفحة النتائج
-    ResultFrame resultWindow = new ResultFrame(rrResults, srtfResults);
-    resultWindow.setVisible(true);
-    this.dispose(); 
-
-} catch (Exception e) {
-    JOptionPane.showMessageDialog(this, "تأكد من ملء الجدول والـ Quantum بأرقام صحيحة");
-    e.printStackTrace(); // عشان تشوف التفاصيل لو حصل إيرور في الـ Output
-}
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void quantumFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_quantumFieldActionPerformed

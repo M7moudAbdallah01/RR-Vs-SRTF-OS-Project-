@@ -12,48 +12,44 @@ import Models.Process;
 import Models.Result;
 import javax.swing.table.DefaultTableModel;
 public class ResultFrame extends javax.swing.JFrame {
-        private Result rr;
-        private Result srtf;
-    /**
-     * Creates new form ResultFrame
-     */
-    // ده الجديد (تعدله في ملف ResultFrame)
-public ResultFrame(Result rrResults, Result srtfResults) { 
-    initComponents();
-    
-    
+    private Result rr;
+    private Result srtf;
+
+    public ResultFrame(Result rrResults, Result srtfResults) {
+        initComponents();
         
+        // 1. التخزين أولاً (مهم جداً)
         this.rr = rrResults;
         this.srtf = srtfResults;
-        displayData();
         
-    // هنا تقدر تستخدم النتائج عشان تعرضها في الجداول اللي في الصفحة التانية
-}
+        // 2. التحقق إن البيانات وصلت فعلاً
+        if (this.rr != null) { // الخطوة 2: العرض بعد التخزين
+            displayData();
+            }
+    }
 private void displayData() {
-    // 1. عرض نتائج Round Robin
-    DefaultTableModel modelRR = (DefaultTableModel) tableRR.getModel();
+    // ملء جدول Round Robin
+    DefaultTableModel modelRR = (DefaultTableModel) tableRR.getModel(); // تأكد من اسم الجدول عندك
     modelRR.setRowCount(0);
     for (Process p : rr.processes) {
         modelRR.addRow(new Object[]{
             "P" + p.id, p.arrivalTime, p.burstTime, 
-            p.completionTime, p.waitingTime, p.turnaroundTime
+            p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime
         });
     }
-    // استخدام الاسماء الصحيحة من كلاس Result
-    lblAvgTATRR.setText(String.format("%.2f", rr.avgWT)); 
-    lblAvgTATRR.setText(String.format("%.2f", rr.avgTAT));
+    // تحديث الـ Labels بالأسماء الصح من كلاس Result
+    lblAvgWaitRR.setText("Avg WT: " + String.format("%.2f", rr.avgWT));
 
-    // 2. عرض نتائج SRTF
+    // ملء جدول SRTF
     DefaultTableModel modelSRTF = (DefaultTableModel) tableSRTF.getModel();
     modelSRTF.setRowCount(0);
     for (Process p : srtf.processes) {
         modelSRTF.addRow(new Object[]{
             "P" + p.id, p.arrivalTime, p.burstTime, 
-            p.completionTime, p.waitingTime, p.turnaroundTime
+            p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime
         });
     }
-    lblAvgTATSRTF.setText(String.format("%.2f", srtf.avgWT));
-    lblAvgTATSRTF.setText(String.format("%.2f", srtf.avgTAT));
+    lblAvgWaitSRTF.setText("Avg WT: " + String.format("%.2f", srtf.avgWT));
 }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -70,8 +66,8 @@ private void displayData() {
         tableSRTF = new javax.swing.JTable();
         jScrollPane3 = new javax.swing.JScrollPane();
         tableRR = new javax.swing.JTable();
-        lblAvgTATRR = new javax.swing.JLabel();
-        lblAvgTATSRTF = new javax.swing.JLabel();
+        lblAvgWaitRR = new javax.swing.JLabel();
+        lblAvgWaitSRTF = new javax.swing.JLabel();
         jButton1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -108,9 +104,9 @@ private void displayData() {
         ));
         jScrollPane3.setViewportView(tableRR);
 
-        lblAvgTATRR.setText("lblAvgWaitRR");
+        lblAvgWaitRR.setText("lblAvgWaitRR");
 
-        lblAvgTATSRTF.setText("lblAvgWaitSRTF");
+        lblAvgWaitSRTF.setText("lblAvgWaitSRTF");
 
         jButton1.setText("Back");
         jButton1.addActionListener(new java.awt.event.ActionListener() {
@@ -137,11 +133,11 @@ private void displayData() {
                         .addGap(18, 18, 18))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(27, 27, 27)
-                        .addComponent(lblAvgTATRR)
+                        .addComponent(lblAvgWaitRR)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblAvgTATSRTF))
+                    .addComponent(lblAvgWaitSRTF))
                 .addContainerGap())
             .addGroup(layout.createSequentialGroup()
                 .addGap(189, 189, 189)
@@ -161,8 +157,8 @@ private void displayData() {
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(lblAvgTATRR)
-                    .addComponent(lblAvgTATSRTF))
+                    .addComponent(lblAvgWaitRR)
+                    .addComponent(lblAvgWaitSRTF))
                 .addGap(18, 18, 18)
                 .addComponent(jButton1)
                 .addContainerGap(15, Short.MAX_VALUE))
@@ -180,37 +176,7 @@ private void displayData() {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(ResultFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(ResultFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(ResultFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(ResultFrame.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new ResultFrame(null, null).setVisible(true);
-            }
-        });
-    }
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;
@@ -218,8 +184,8 @@ private void displayData() {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
-    private javax.swing.JLabel lblAvgTATRR;
-    private javax.swing.JLabel lblAvgTATSRTF;
+    private javax.swing.JLabel lblAvgWaitRR;
+    private javax.swing.JLabel lblAvgWaitSRTF;
     private javax.swing.JTable tableRR;
     private javax.swing.JTable tableSRTF;
     // End of variables declaration//GEN-END:variables
