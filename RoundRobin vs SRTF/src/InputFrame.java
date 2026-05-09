@@ -168,87 +168,72 @@ public class InputFrame extends javax.swing.JFrame {
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
         // TODO add your handling code here:
-                                                
                                              
     try {
-        // 1. التحقق من الـ Quantum Field
+        // 1. التحقق من الـ Quantum (Validation)
         String qStr = quantumField.getText().trim();
-        if (qStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Error: Quantum field cannot be empty!", "Input Error", JOptionPane.ERROR_MESSAGE);
+        if (qStr.isEmpty() || Integer.parseInt(qStr) <= 0) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Error: Quantum must be a positive integer!", "Validation Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
+        int q = Integer.parseInt(qStr);
 
-        int q;
-        try {
-            q = Integer.parseInt(qStr);
-            if (q <= 0) {
-                JOptionPane.showMessageDialog(this, "Error: Quantum must be greater than 0!", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Error: Quantum must be a valid integer!", "Type Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // 2. التحقق من بيانات الجدول
-        ArrayList<Process> processList = new ArrayList<>();
+        // 2. التحقق من بيانات الجدول وتجهيز القائمة
+        ArrayList<Process> originalList = new ArrayList<>();
         DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
 
         if (model.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this, "Error: Please generate a table and enter process data!", "Empty Table", JOptionPane.WARNING_MESSAGE);
+            javax.swing.JOptionPane.showMessageDialog(this, "Error: Table is empty!", "Input Error", javax.swing.JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         for (int i = 0; i < model.getRowCount(); i++) {
-            try {
-                Object arrivalObj = model.getValueAt(i, 1);
-                Object burstObj = model.getValueAt(i, 2);
+            Object arrivalObj = model.getValueAt(i, 1);
+            Object burstObj = model.getValueAt(i, 2);
 
-                if (arrivalObj == null || burstObj == null || arrivalObj.toString().isEmpty() || burstObj.toString().isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival and Burst times are required!", "Missing Data", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                int arrival = Integer.parseInt(arrivalObj.toString());
-                int burst = Integer.parseInt(burstObj.toString());
-
-                if (arrival < 0) {
-                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival Time cannot be negative!", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                if (burst <= 0) {
-                    JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Burst Time must be greater than 0!", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                processList.add(new Process(i + 1, arrival, burst));
-
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Error in P" + (i + 1) + ": Arrival and Burst must be valid integers!", "Type Error", JOptionPane.ERROR_MESSAGE);
+            if (arrivalObj == null || burstObj == null || arrivalObj.toString().isEmpty()) {
+                javax.swing.JOptionPane.showMessageDialog(this, "Error: Please fill all fields for P" + (i+1), "Input Error", javax.swing.JOptionPane.ERROR_MESSAGE);
                 return;
             }
+
+            int arrival = Integer.parseInt(arrivalObj.toString());
+            int burst = Integer.parseInt(burstObj.toString());
+
+            if (arrival < 0 || burst <= 0) {
+                javax.swing.JOptionPane.showMessageDialog(this, "Error in P" + (i+1) + ": Arrival >= 0 and Burst > 0", "Validation Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            originalList.add(new Process(i + 1, arrival, burst));
         }
 
-        // 3. تشغيل الحسابات وفتح صفحة النتائج (بعد التأكد من صحة كل البيانات)
-        // تصفير البيانات قبل الإرسال لضمان عدم حدوث Freeze
-        for (Process p : processList) {
-            p.remainingTime = p.burstTime;
-            p.started = false;
+        // 3. حل مشكلة تشابه النتائج: إنشاء نسختين منفصلتين تماماً (Deep Copy)
+        ArrayList<Process> rrList = new ArrayList<>();
+        ArrayList<Process> srtfList = new ArrayList<>();
+
+        for (Process p : originalList) {
+            // ننشئ كائنات جديدة تماماً لكل قائمة حتى لا تؤثر حسابات خوارزمية على الأخرى
+            rrList.add(new Process(p.id, p.arrivalTime, p.burstTime));
+            srtfList.add(new Process(p.id, p.arrivalTime, p.burstTime));
         }
 
-        Result rrRes = RoundRobinScheduler.run(new ArrayList<>(processList), q);
-        Result srtfRes = SRTFScheduler.run(new ArrayList<>(processList));
+        // 4. تشغيل الخوارزميات (كل واحدة بنسختها الخاصة)
+        Result rrRes = RoundRobinScheduler.run(rrList, q);
+        Result srtfRes = SRTFScheduler.run(srtfList);
 
+        // 5. الانتقال لصفحة النتائج وتمرير البيانات
         if (rrRes != null && srtfRes != null) {
             ResultFrame resFrame = new ResultFrame(rrRes, srtfRes);
             resFrame.setVisible(true);
-            this.dispose();
+            this.dispose(); // إغلاق نافذة الإدخال
         }
 
+    } catch (NumberFormatException e) {
+        javax.swing.JOptionPane.showMessageDialog(this, "Error: Please enter valid numbers only!", "Type Error", javax.swing.JOptionPane.ERROR_MESSAGE);
     } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Unexpected Error: " + e.getMessage());
+        javax.swing.JOptionPane.showMessageDialog(this, "Unexpected Error: " + e.getMessage());
         e.printStackTrace();
     }
+
 
 
     }//GEN-LAST:event_jButton2ActionPerformed

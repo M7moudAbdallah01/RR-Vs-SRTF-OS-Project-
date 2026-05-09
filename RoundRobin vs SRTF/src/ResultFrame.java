@@ -64,28 +64,23 @@ public boolean importData(TransferSupport support) {
             }
     }
 private void displayData() {
-    // ملء جدول Round Robin
-    DefaultTableModel modelRR = (DefaultTableModel) tableRR.getModel(); // تأكد من اسم الجدول عندك
+    // تعبئة جدول الـ Round Robin من كائن rr
+    DefaultTableModel modelRR = (DefaultTableModel) tableRR.getModel();
     modelRR.setRowCount(0);
     for (Process p : rr.processes) {
-        modelRR.addRow(new Object[]{
-            "P" + p.id, p.arrivalTime, p.burstTime, 
-            p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime
-        });
+        modelRR.addRow(new Object[]{"P"+p.id, p.arrivalTime, p.burstTime, p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime});
     }
-    // تحديث الـ Labels بالأسماء الصح من كلاس Result
-    lblAvgWaitRR.setText("Avg WT: " + String.format("%.2f", rr.avgWT));
 
-    // ملء جدول SRTF
+    // تعبئة جدول الـ SRTF من كائن srtf
     DefaultTableModel modelSRTF = (DefaultTableModel) tableSRTF.getModel();
     modelSRTF.setRowCount(0);
     for (Process p : srtf.processes) {
-        modelSRTF.addRow(new Object[]{
-            "P" + p.id, p.arrivalTime, p.burstTime, 
-            p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime
-        });
+        modelSRTF.addRow(new Object[]{"P"+p.id, p.arrivalTime, p.burstTime, p.completionTime, p.waitingTime, p.turnaroundTime, p.responseTime});
     }
-    lblAvgWaitSRTF.setText("Avg WT: " + String.format("%.2f", srtf.avgWT));
+    
+    // تحديث الليبلز بتاعة المتوسطات
+    lblAvgWaitRR.setText(String.format("%.2f", rr.avgWT));
+    lblAvgWaitSRTF.setText(String.format("%.2f", srtf.avgWT));
 }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -134,6 +129,7 @@ private void displayData() {
                 "PID", "AT", "BT", "CT", "WT", "TAT", "RT"
             }
         ));
+        tableSRTF.setEnabled(false);
         jScrollPane1.setViewportView(tableSRTF);
 
         tableRR.setModel(new javax.swing.table.DefaultTableModel(
@@ -147,6 +143,7 @@ private void displayData() {
                 "PID", "AT", "BT", "CT", "WT", "TAT", "RT"
             }
         ));
+        tableRR.setEnabled(false);
         jScrollPane3.setViewportView(tableRR);
 
         lblAvgWaitRR.setText("lblAvgWaitRR");
