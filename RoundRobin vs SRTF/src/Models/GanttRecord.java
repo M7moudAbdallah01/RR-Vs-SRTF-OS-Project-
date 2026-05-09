@@ -9,11 +9,16 @@ package Models;
  * @author 𝕐𝕠𝕦𝕤𝕤𝕚𝕗 𝔸𝕕𝕝𝕪
  */
 public class GanttRecord {
+
     public int processId;
     public int startTime;
     public int endTime;
 
-    public GanttRecord(int processId, int startTime, int par) {
+    public GanttRecord(
+            int processId,
+            int startTime,
+            int endTime) {
+
         this.processId = processId;
         this.startTime = startTime;
         this.endTime = endTime;

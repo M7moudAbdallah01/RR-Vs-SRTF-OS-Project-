@@ -19,7 +19,6 @@ public class RoundRobinScheduler {
         int time = 0;
         int completed = 0;
         int n = processes.size();
-            
 
         processes.sort(Comparator.comparingInt(p -> p.arrivalTime));
 
@@ -44,10 +43,27 @@ public class RoundRobinScheduler {
             }
 
             int execTime = Math.min(quantum, p.remainingTime);
-            gantt.add(new GanttRecord(p.id, time, time + 1));
 
-            time += execTime;
-            p.remainingTime -= execTime;
+// سجل التنفيذ وحدة وحدة
+            for (int t = 0; t < execTime; t++) {
+
+                gantt.add(new GanttRecord(
+                        p.id,
+                        time,
+                        time + 1
+                ));
+
+                time++;
+                p.remainingTime--;
+
+                // إضافة الـ processes اللي وصلت أثناء التنفيذ
+                while (i < n
+                        && processes.get(i).arrivalTime <= time) {
+
+                    queue.add(processes.get(i));
+                    i++;
+                }
+            }
 
             while (i < n && processes.get(i).arrivalTime <= time) {
                 queue.add(processes.get(i));
@@ -65,9 +81,8 @@ public class RoundRobinScheduler {
         }
 
         return calculateResult(processes, gantt);
-        
+
     }
-    
 
     private static Result calculateResult(List<Process> processes, List<GanttRecord> gantt) {
         double totalWT = 0, totalTAT = 0, totalRT = 0;
@@ -85,4 +100,3 @@ public class RoundRobinScheduler {
                 totalRT / n);
     }
 }
-

@@ -3,7 +3,6 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-<<<<<<< HEAD
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/numProcessesField.java</file>
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/InputFrame.java</file>
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/GanttRecord.java</file>
@@ -14,15 +13,6 @@
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/SRTFScheduler.java</file>
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/Result.java</file>
             <file>file:/C:/xampp/htdocs/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/ResultFrame.java</file>
-=======
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/roundrobin/vs/srtf/RoundRobinVsSRTF.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/InputFrame.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/ResultFrame.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/RoundRobinScheduler.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/SRTFScheduler.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/Result.java</file>
-            <file>file:/D:/OS/RR-Vs-SRTF-OS-Project-/RoundRobin%20vs%20SRTF/src/Models/Process.java</file>
->>>>>>> a3154411daae1b0e16918d1738f86204376db75c
         </group>
     </open-files>
 </project-private>
