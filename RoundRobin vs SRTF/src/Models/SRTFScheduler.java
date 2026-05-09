@@ -12,50 +12,46 @@ import java.util.*;
 
 public class SRTFScheduler {
 
-    public static Result run(List<Process> processes) {
-        List<GanttRecord> gantt = new ArrayList<>();
+public static Result run(List<Process> processes) {
+    List<GanttRecord> gantt = new ArrayList<>();
+    int n = processes.size();
+    for (Process p : processes) p.remainingTime = p.burstTime; // إعادة ضبط
 
-        int time = 0;
-        int completed = 0;
-        int n = processes.size();
+    int time = 0, completed = 0;
+    while (completed < n) {
+        Process shortest = null;
+        int minRem = Integer.MAX_VALUE;
 
-        while (completed < n) {
-            Process shortest = null;
-
-            for (Process p : processes) {
-                if (p.arrivalTime <= time && p.remainingTime > 0) {
-                    if (shortest == null || p.remainingTime < shortest.remainingTime) {
-                        shortest = p;
-                    }
-                }
-            }
-
-            if (shortest == null) {
-                time++;
-                continue;
-            }
-
-            if (!shortest.started) {
-                shortest.responseTime = time - shortest.arrivalTime;
-                shortest.started = true;
-            }
-
-            int start = time;
-            shortest.remainingTime--;
-            time++;
-
-            gantt.add(new GanttRecord(shortest.id, start, time));
-
-            if (shortest.remainingTime == 0) {
-                shortest.completionTime = time;
-                shortest.turnaroundTime = time - shortest.arrivalTime;
-                shortest.waitingTime = shortest.turnaroundTime - shortest.burstTime;
-                completed++;
+        for (Process p : processes) {
+            if (p.arrivalTime <= time && p.remainingTime > 0 && p.remainingTime < minRem) {
+                minRem = p.remainingTime;
+                shortest = p;
             }
         }
 
-        return calculateResult(processes, gantt);
+        if (shortest == null) {
+            // القفزة دي هي اللي بتمنع الـ Freeze
+            int nextArr = Integer.MAX_VALUE;
+            for (Process p : processes) {
+                if (p.arrivalTime > time) nextArr = Math.min(nextArr, p.arrivalTime);
+            }
+            time = (nextArr == Integer.MAX_VALUE) ? time + 1 : nextArr;
+            continue;
+        }
+
+        gantt.add(new GanttRecord(shortest.id, time, time + 1));
+        time++;
+        shortest.remainingTime--;
+
+        if (shortest.remainingTime == 0) {
+            completed++;
+            shortest.completionTime = time;
+            shortest.turnaroundTime = time - shortest.arrivalTime;
+            shortest.waitingTime = shortest.turnaroundTime - shortest.burstTime;
+        }
     }
+    return calculateResult(processes, gantt);
+}
 
     private static Result calculateResult(List<Process> processes, List<GanttRecord> gantt) {
         double totalWT = 0, totalTAT = 0, totalRT = 0;
