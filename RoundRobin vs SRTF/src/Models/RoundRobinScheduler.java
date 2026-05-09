@@ -15,10 +15,11 @@ public class RoundRobinScheduler {
     public static Result run(List<Process> processes, int quantum) {
         Queue<Process> queue = new LinkedList<>();
         List<GanttRecord> gantt = new ArrayList<>();
-
+        List<String> queueSnapshots = new ArrayList<>();
         int time = 0;
         int completed = 0;
         int n = processes.size();
+            
 
         processes.sort(Comparator.comparingInt(p -> p.arrivalTime));
 
@@ -64,7 +65,9 @@ public class RoundRobinScheduler {
         }
 
         return calculateResult(processes, gantt);
+        
     }
+    
 
     private static Result calculateResult(List<Process> processes, List<GanttRecord> gantt) {
         double totalWT = 0, totalTAT = 0, totalRT = 0;
@@ -82,3 +85,4 @@ public class RoundRobinScheduler {
                 totalRT / n);
     }
 }
+
