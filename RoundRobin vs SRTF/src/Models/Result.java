@@ -13,17 +13,19 @@ import java.util.List;
 
 public class Result {
     public List<Process> processes;
-    public List<GanttRecord> ganttChart;
+    
     public double avgWT;
     public double avgTAT;
     public double avgRT;
-
+public List<GanttRecord> ganttChart;
     public Result(List<Process> processes, List<GanttRecord> ganttChart,
                   double avgWT, double avgTAT, double avgRT) {
         this.processes = processes;
-        this.ganttChart = ganttChart;
+       
         this.avgWT = avgWT;
         this.avgTAT = avgTAT;
         this.avgRT = avgRT;
+        this.ganttChart = ganttChart;
     }
+    
 }

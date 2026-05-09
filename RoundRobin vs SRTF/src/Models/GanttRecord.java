@@ -13,7 +13,7 @@ public class GanttRecord {
     public int startTime;
     public int endTime;
 
-    public GanttRecord(String idle, int processId, int startTime) {
+    public GanttRecord(int processId, int startTime, int par) {
         this.processId = processId;
         this.startTime = startTime;
         this.endTime = endTime;
