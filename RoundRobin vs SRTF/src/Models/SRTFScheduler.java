@@ -73,12 +73,9 @@ public class SRTFScheduler {
             // ===== CPU Idle =====
             if (shortest == null) {
 
-                gantt.add(
-                        new GanttRecord(
-                                "Idle",
-                                time,
-                                time + 1
-                        )
+                gantt.add(new GanttRecord(
+                                                                time,
+                                time + 1, time + 1)
                 );
 
                 time++;
@@ -96,13 +93,10 @@ public class SRTFScheduler {
             }
 
             // ===== Execute 1 Unit =====
-            gantt.add(new GanttRecord(
-                            "Idle", shortest.id,
-                            time)
-            );
+            gantt.add(new GanttRecord(shortest.id, time, time + 1)); 
 
-            shortest.remainingTime--;
-            time++;
+                shortest.remainingTime--;
+                time++;
 
             // ===== Completion =====
             if (shortest.remainingTime == 0) {

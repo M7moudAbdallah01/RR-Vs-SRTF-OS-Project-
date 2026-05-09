@@ -44,7 +44,7 @@ public class RoundRobinScheduler {
             }
 
             int execTime = Math.min(quantum, p.remainingTime);
-            gantt.add(new GanttRecord("Idle", p.id, time));
+            gantt.add(new GanttRecord(p.id, time, time + 1));
 
             time += execTime;
             p.remainingTime -= execTime;
